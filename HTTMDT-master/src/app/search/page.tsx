@@ -84,7 +84,7 @@ export default async function SearchPage({
     try {
         await dbConnect();
         // Fetch from DB
-        const rawResults = await Property.find(query).limit(20).lean();
+        const rawResults = await Property.find(query).sort({ postedDate: -1, createdAt: -1 }).lean();
         total = await Property.countDocuments(query);
 
         results = rawResults.map((p: any) => ({

@@ -195,8 +195,8 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                 </div>
 
                 {/* Sidebar - Contact */}
-                <div className="lg:col-span-1">
-                    <div className="sticky top-24 rounded-xl border bg-card text-card-foreground shadow space-y-6 p-6">
+                <div className="lg:col-span-1 flex flex-col gap-8">
+                    <div className="rounded-xl border bg-card text-card-foreground shadow space-y-6 p-6">
                         <div className="flex items-center gap-4">
                             {property.author.avatar ? (
                                 <img src={property.author.avatar} alt={property.author.name} className="w-16 h-16 rounded-full object-cover" />
@@ -246,7 +246,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                     </div>
 
                     {/* Disclaimer */}
-                    <div className="mt-8 p-4 bg-muted/40 text-muted-foreground rounded-xl border text-sm">
+                    <div className="p-4 bg-muted/40 text-muted-foreground rounded-xl border text-sm">
                         <p className="font-bold mb-2 flex items-center gap-1 text-foreground/80">
                             <ShieldAlert className="w-4 h-4 text-orange-500" /> Miễn trừ trách nhiệm
                         </p>
@@ -256,7 +256,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                     </div>
 
                     {/* AdBanner */}
-                    <div className="mt-8">
+                    <div>
                         <AdBanner type="vertical" />
                     </div>
                 </div>

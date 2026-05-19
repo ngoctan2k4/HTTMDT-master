@@ -6,6 +6,8 @@ import dbConnect from "@/lib/db";
 import { User } from "@/models/User";
 
 export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    trustHost: true,
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID || "mock-client-id",

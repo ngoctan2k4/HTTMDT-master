@@ -16,7 +16,17 @@ const reportSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    category: {
+      type: String,
+      enum: ["fraud", "spam", "availability", "other"],
+      default: "other",
+      index: true,
+    },
     details: {
+      type: String,
+      default: "",
+    },
+    description: {
       type: String,
       default: "",
     },

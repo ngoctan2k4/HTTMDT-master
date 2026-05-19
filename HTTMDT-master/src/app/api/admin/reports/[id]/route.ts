@@ -13,6 +13,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         const body = await req.json();
         const { status } = body;
+        if (!["pending", "resolved", "ignored"].includes(status)) {
+            return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+        }
 
         await dbConnect();
         await Report.findByIdAndUpdate(resolvedParams.id, { status });

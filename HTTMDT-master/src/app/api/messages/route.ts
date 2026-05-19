@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/db";
 import { Message } from "@/models/Message";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
@@ -75,11 +76,13 @@ export async function GET(req: Request) {
         User.init();
         Property.init();
 
-        const userId = session.user.id;
+        const userId = new mongoose.Types.ObjectId(session.user.id);
 
         // Find messages where user is receiver or sender
         const messages = await Message.find({
-            $or: [{ receiverId: userId }, { senderId: userId }]
+            $or: [{ receiverId: userId }, { senderId: userId }],
+            deletedFor: { $ne: userId },
+            deletedForEveryone: { $ne: true },
         })
             .populate('senderId', 'name avatar')
             .populate('receiverId', 'name avatar')

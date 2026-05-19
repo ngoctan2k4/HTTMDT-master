@@ -6,6 +6,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { autoCorrect } from "@/lib/autoCorrect";
+import { UnreadMessageBadge } from "@/components/messages/UnreadMessageBadge";
 
 export function Header() {
     const { data: session } = useSession();
@@ -103,6 +104,13 @@ export function Header() {
                                 <Package className="h-4 w-4 text-orange-500" />
                                 <span className="hidden lg:inline-block">Lịch hẹn</span>
                             </Link>
+                            {session && (
+                                <Link href="/dashboard/messages" className="relative flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-primary transition-colors bg-muted/50 px-3 py-1.5 rounded-full border border-transparent hover:border-primary/30 whitespace-nowrap">
+                                    <MessageSquare className="h-4 w-4 text-blue-500" />
+                                    <span className="hidden lg:inline-block">Hộp thư</span>
+                                    <UnreadMessageBadge className="absolute -right-1 -top-2" />
+                                </Link>
+                            )}
                         </div>
 
                         {/* Auth State */}
@@ -148,6 +156,7 @@ export function Header() {
                                         <Link href="/dashboard/messages" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
                                             <MessageSquare className="h-4 w-4" />
                                             Hộp thư
+                                            <UnreadMessageBadge className="ml-auto" />
                                         </Link>
                                         <Link href="/dashboard/post" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
                                             <PlusCircle className="h-4 w-4" />

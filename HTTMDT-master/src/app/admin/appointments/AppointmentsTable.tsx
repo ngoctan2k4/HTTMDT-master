@@ -73,6 +73,7 @@ export default function AppointmentsTable({ initialData }: { initialData: any[] 
                     }
                     return app;
                 }));
+                window.dispatchEvent(new Event("admin-notifications-refresh"));
             } else {
                 const data = await res.json();
                 alert(data.error || "Lỗi xử lý");

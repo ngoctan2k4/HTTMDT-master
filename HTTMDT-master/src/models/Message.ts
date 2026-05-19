@@ -6,6 +6,9 @@ const messageSchema = new mongoose.Schema({
     propertyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Property' },
     content: { type: String, required: true },
     isRead: { type: Boolean, default: false },
+    deletedFor: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    deletedForEveryone: { type: Boolean, default: false },
+    deletedAt: { type: Date },
     createdAt: { type: Date, default: Date.now }
 });
 

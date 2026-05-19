@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { MessageSquare, Loader2, Send, Search, CheckCircle2, UserCircle } from "lucide-react";
+import { MessageSquare, Loader2, Send, Search, CheckCircle2, UserCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -39,11 +39,23 @@ function InboxContent() {
     
     // Derived state
     const [peers, setPeers] = useState<PeerType[]>([]);
+    const [supportPeer, setSupportPeer] = useState<PeerType | null>(null);
     const [activePeerId, setActivePeerId] = useState<string | null>(initialPeer || null);
     const [replyText, setReplyText] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesViewportRef = useRef<HTMLDivElement>(null);
+
+    const visiblePeers = useMemo(() => {
+        if (!supportPeer) return peers;
+
+        const peerMap = new Map(peers.map(peer => [peer.id, peer]));
+        if (!peerMap.has(supportPeer.id)) {
+            peerMap.set(supportPeer.id, supportPeer);
+        }
+
+        return Array.from(peerMap.values());
+    }, [peers, supportPeer]);
 
     const loadMessages = async (isBackground = false) => {
         try {
@@ -72,7 +84,15 @@ function InboxContent() {
 
     // Process messages into peer groups when messages change
     useEffect(() => {
-        if (!session?.user?.id || !messages.length) return;
+        if (!session?.user?.id) return;
+
+        if (!messages.length) {
+            setPeers([]);
+            if (!supportPeer || activePeerId !== supportPeer.id) {
+                setActivePeerId(null);
+            }
+            return;
+        }
         
         const myId = session.user.id;
         const peerMap = new Map<string, PeerType>();
@@ -111,7 +131,7 @@ function InboxContent() {
         if (!activePeerId && sortedPeers.length > 0) {
             setActivePeerId(sortedPeers[0].id);
         }
-    }, [messages, session, activePeerId]);
+    }, [messages, session, activePeerId, supportPeer]);
 
     // Update read status implicitly when viewing a chat
     useEffect(() => {
@@ -128,13 +148,9 @@ function InboxContent() {
         // Optimistically update local state to reflect read
         if (unreadMsgIds.length > 0) {
              setMessages(prev => prev.map(m => unreadMsgIds.includes(m._id) ? { ...m, isRead: true } : m));
+             window.dispatchEvent(new Event("message-unread-refresh"));
         }
     }, [activePeerId, messages, session]);
-
-    // Auto-scroll to bottom of active chat
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, activePeerId]);
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -145,7 +161,7 @@ function InboxContent() {
         setReplyText(""); // Optimistic clear
 
         // Find context property
-        const activePeer = peers.find(p => p.id === activePeerId);
+        const activePeer = visiblePeers.find(p => p.id === activePeerId);
         
         try {
             const res = await fetch("/api/messages", {
@@ -168,17 +184,120 @@ function InboxContent() {
         }
     };
 
+    const handleDeleteConversation = async (peerId: string, peerName?: string) => {
+        if (!session?.user?.id) return;
+        const myId = session.user.id;
+        if (!confirm(`Xóa toàn bộ cuộc trò chuyện với ${peerName || "người này"} khỏi hộp thư của bạn?`)) return;
+
+        try {
+            const res = await fetch(`/api/messages/conversations/${peerId}`, { method: "DELETE" });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.error || "Không thể xóa cuộc trò chuyện.");
+                return;
+            }
+
+            setMessages(prev => prev.filter(m => {
+                const isConversation =
+                    (m.senderId._id === peerId && m.receiverId._id === myId) ||
+                    (m.receiverId._id === peerId && m.senderId._id === myId);
+                return !isConversation;
+            }));
+
+            if (activePeerId === peerId) {
+                setActivePeerId(null);
+            }
+            if (supportPeer?.id === peerId) {
+                setSupportPeer(null);
+            }
+            window.dispatchEvent(new Event("message-unread-refresh"));
+        } catch (err) {
+            console.error(err);
+            alert("Không thể xóa cuộc trò chuyện.");
+        }
+    };
+
+    const handleStartAdminChat = async () => {
+        try {
+            const res = await fetch("/api/messages/admin", { cache: "no-store" });
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data.error || "Không thể mở hội thoại với admin.");
+                return;
+            }
+
+            const adminPeer: PeerType = {
+                id: data.id,
+                name: data.name || "Admin An Cư Plus",
+                avatar: data.avatar || "",
+                lastMessage: "Bắt đầu hội thoại với admin",
+                lastMessageTime: new Date().toISOString(),
+                unreadCount: 0,
+            };
+
+            setSupportPeer(adminPeer);
+            setActivePeerId(adminPeer.id);
+            setSearchQuery("");
+        } catch (err) {
+            console.error(err);
+            alert("Không thể mở hội thoại với admin.");
+        }
+    };
+
+    const handleDeleteMessage = async (message: MessageType, isMe: boolean) => {
+        const mode = isMe ? "everyone" : "me";
+        const confirmText = isMe
+            ? "Gỡ tin nhắn này cho cả hai bên? Người nhận sẽ không còn thấy tin nhắn này."
+            : "Xóa tin nhắn này khỏi phía bạn?";
+
+        if (!confirm(confirmText)) return;
+
+        try {
+            const res = await fetch(`/api/messages/${message._id}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                alert(data.error || "Không thể xóa tin nhắn.");
+                return;
+            }
+
+            setMessages(prev => prev.filter(m => m._id !== message._id));
+            window.dispatchEvent(new Event("message-unread-refresh"));
+        } catch (err) {
+            console.error(err);
+            alert("Không thể xóa tin nhắn.");
+        }
+    };
+
+    // Get messages for the active conversation, chronologically
+    const activeMessages = useMemo(() => messages.filter(
+        m => (m.senderId._id === activePeerId && m.receiverId._id === session?.user?.id) ||
+             (m.receiverId._id === activePeerId && m.senderId._id === session?.user?.id)
+    ).reverse(), [activePeerId, messages, session?.user?.id]);
+
+    const latestActiveMessageId = activeMessages[activeMessages.length - 1]?._id || "";
+
+    // Keep scrolling inside the chat viewport only. scrollIntoView can move the whole page.
+    useEffect(() => {
+        const viewport = messagesViewportRef.current;
+        if (!viewport) return;
+
+        viewport.scrollTo({
+            top: viewport.scrollHeight,
+            behavior: "auto",
+        });
+    }, [activePeerId, latestActiveMessageId]);
+
     if (loading && messages.length === 0) {
         return <div className="flex justify-center items-center h-[70vh]"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
     }
 
-    const filteredPeers = peers.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    // Get messages for the active conversation, chronologically
-    const activeMessages = messages.filter(
-        m => (m.senderId._id === activePeerId && m.receiverId._id === session?.user?.id) ||
-             (m.receiverId._id === activePeerId && m.senderId._id === session?.user?.id)
-    ).reverse();
+    const filteredPeers = visiblePeers.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return (
         <div className="container mx-auto p-4 max-w-6xl h-[calc(100vh-80px)] flex flex-col">
@@ -187,9 +306,19 @@ function InboxContent() {
                 {/* LEFT SIDEBAR: Conversations */}
                 <div className={`${activePeerId ? 'hidden md:flex' : 'flex'} w-full md:w-80 border-r flex-col bg-muted/10`}>
                     <div className="p-4 border-b bg-background">
-                        <h2 className="font-bold text-xl flex items-center gap-2 mb-4">
-                            <MessageSquare className="w-6 h-6 text-primary" /> Messenger
-                        </h2>
+                        <div className="mb-4 flex items-center justify-between gap-3">
+                            <h2 className="font-bold text-xl flex items-center gap-2">
+                                <MessageSquare className="w-6 h-6 text-primary" /> Messenger
+                            </h2>
+                            {session?.user?.role !== "admin" && (
+                                <button
+                                    onClick={handleStartAdminChat}
+                                    className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                                >
+                                    Nhắn admin
+                                </button>
+                            )}
+                        </div>
                         <div className="relative">
                             <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted-foreground" />
                             <input 
@@ -203,42 +332,61 @@ function InboxContent() {
                     </div>
 
                     <div className="flex-1 overflow-y-auto w-full">
-                        {peers.length === 0 ? (
+                        {visiblePeers.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
                                 <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
                                 <p className="text-sm">Hộp thư của bạn đang trống.</p>
+                                {session?.user?.role !== "admin" && (
+                                    <button
+                                        onClick={handleStartAdminChat}
+                                        className="mt-4 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                                    >
+                                        Nhắn admin
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             filteredPeers.map(peer => (
-                                <button 
+                                <div
                                     key={peer.id}
-                                    onClick={() => setActivePeerId(peer.id)}
-                                    className={`w-full text-left p-3 flex items-center gap-3 transition-colors border-b last:border-0 hover:bg-muted/50 ${activePeerId === peer.id ? "bg-primary/5 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"}`}
+                                    className={`group flex w-full items-center gap-2 border-b border-l-4 p-2 transition-colors last:border-b-0 hover:bg-muted/50 ${activePeerId === peer.id ? "bg-primary/5 border-l-primary" : "border-l-transparent"}`}
                                 >
-                                    <div className="relative shrink-0">
-                                        {peer.avatar ? (
-                                            <img src={peer.avatar} alt="avatar" className="w-12 h-12 rounded-full object-cover" />
-                                        ) : (
-                                            <UserCircle className="w-12 h-12 text-muted-foreground" />
-                                        )}
-                                        {peer.unreadCount > 0 && (
-                                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-background">
-                                                {peer.unreadCount}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-baseline mb-0.5">
-                                            <h4 className="font-semibold text-sm truncate pr-2">{peer.name}</h4>
-                                            <span className="text-[10px] text-muted-foreground shrink-0">
-                                                {new Date(peer.lastMessageTime).toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'})}
-                                            </span>
+                                    <button
+                                        onClick={() => setActivePeerId(peer.id)}
+                                        className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 text-left"
+                                    >
+                                        <div className="relative shrink-0">
+                                            {peer.avatar ? (
+                                                <img src={peer.avatar} alt="avatar" className="w-12 h-12 rounded-full object-cover" />
+                                            ) : (
+                                                <UserCircle className="w-12 h-12 text-muted-foreground" />
+                                            )}
+                                            {peer.unreadCount > 0 && (
+                                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-background">
+                                                    {peer.unreadCount}
+                                                </span>
+                                            )}
                                         </div>
-                                        <p className={`text-xs truncate ${peer.unreadCount > 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>
-                                            {peer.lastMessage}
-                                        </p>
-                                    </div>
-                                </button>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex justify-between items-baseline mb-0.5">
+                                                <h4 className="font-semibold text-sm truncate pr-2">{peer.name}</h4>
+                                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                                    {new Date(peer.lastMessageTime).toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'})}
+                                                </span>
+                                            </div>
+                                            <p className={`text-xs truncate ${peer.unreadCount > 0 ? "font-bold text-foreground" : "text-muted-foreground"}`}>
+                                                {peer.lastMessage}
+                                            </p>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteConversation(peer.id, peer.name)}
+                                        title="Xóa cuộc trò chuyện"
+                                        className="rounded-md p-2 text-muted-foreground opacity-100 transition-colors hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
                             ))
                         )}
                     </div>
@@ -250,7 +398,15 @@ function InboxContent() {
                         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/5">
                             <MessageSquare className="w-16 h-16 opacity-10 mb-4" />
                             <p className="text-lg font-medium">Chọn một hội thoại</p>
-                            <p className="text-sm">Bấm vào người dùng bên trái để bắt đầu nhắn tin.</p>
+                            <p className="text-sm">Bấm vào người dùng bên trái hoặc nhắn admin để bắt đầu.</p>
+                            {session?.user?.role !== "admin" && (
+                                <button
+                                    onClick={handleStartAdminChat}
+                                    className="mt-5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                                >
+                                    Nhắn admin
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <>
@@ -263,7 +419,7 @@ function InboxContent() {
                                     </button>
                                     
                                     {(() => {
-                                        const peer = peers.find(p => p.id === activePeerId);
+                                        const peer = visiblePeers.find(p => p.id === activePeerId);
                                         return (
                                             <>
                                                 {peer?.avatar ? (
@@ -283,10 +439,22 @@ function InboxContent() {
                                         )
                                     })()}
                                 </div>
+                                {(() => {
+                                    const peer = visiblePeers.find(p => p.id === activePeerId);
+                                    return (
+                                        <button
+                                            onClick={() => activePeerId && handleDeleteConversation(activePeerId, peer?.name)}
+                                            title="Xóa cuộc trò chuyện"
+                                            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    );
+                                })()}
                             </div>
 
                             {/* Messages View */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5">
+                            <div ref={messagesViewportRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5">
                                 {activeMessages.map((msg, idx) => {
                                     const isMe = msg.senderId._id === session?.user?.id;
                                     // simple grouping to show timestamps occasionally
@@ -300,7 +468,16 @@ function InboxContent() {
                                                     {new Date(msg.createdAt).toLocaleString("vi-VN", { weekday: 'short', hour: '2-digit', minute:'2-digit' })}
                                                 </div>
                                             )}
-                                            <div className={`flex ${isMe ? "justify-end" : "justify-start"} mb-1`}>
+                                            <div className={`group flex items-center gap-2 ${isMe ? "justify-end" : "justify-start"} mb-1`}>
+                                                {isMe && (
+                                                    <button
+                                                        onClick={() => handleDeleteMessage(msg, isMe)}
+                                                        title="Gỡ tin nhắn cho cả hai bên"
+                                                        className="rounded-full p-1.5 text-muted-foreground opacity-100 transition-colors hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
                                                 <div 
                                                     className={`max-w-[75%] px-4 py-2 text-sm shadow-sm
                                                         ${isMe 
@@ -310,6 +487,15 @@ function InboxContent() {
                                                 >
                                                     <p className="whitespace-pre-wrap">{msg.content}</p>
                                                 </div>
+                                                {!isMe && (
+                                                    <button
+                                                        onClick={() => handleDeleteMessage(msg, isMe)}
+                                                        title="Xóa tin nhắn phía bạn"
+                                                        className="rounded-full p-1.5 text-muted-foreground opacity-100 transition-colors hover:bg-red-50 hover:text-red-600 md:opacity-0 md:group-hover:opacity-100"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                             {/* Read receipt indicator (only on last message if it's mine) */}
                                             {isMe && idx === activeMessages.length - 1 && (
@@ -320,7 +506,6 @@ function InboxContent() {
                                         </div>
                                     )
                                 })}
-                                <div ref={messagesEndRef} />
                             </div>
 
                             {/* Chat Input */}

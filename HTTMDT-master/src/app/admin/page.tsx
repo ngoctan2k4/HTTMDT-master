@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Building2, CalendarCheck, ShieldAlert, BadgeCheck, Loader2, DatabaseZap } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, ComposedChart } from "recharts";
+import { AdminTaskSummary } from "@/components/admin/AdminTaskSummary";
 
 interface TimeSeriesData {
     date: string;
@@ -143,6 +144,8 @@ export default function AdminDashboardPage() {
                     </button>
                 </div>
             </div>
+
+            <AdminTaskSummary />
 
             {/* KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

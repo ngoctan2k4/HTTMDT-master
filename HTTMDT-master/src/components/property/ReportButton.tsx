@@ -14,6 +14,8 @@ export default function ReportButton({ propertyId }: { propertyId: string }) {
         "Giá ảo / Không đúng thực tế",
         "Bất động sản đã bán / Cho thuê",
         "Sai vị trí / Hình ảnh mượn",
+        "Spam / Tin rác / Quảng cáo",
+        "Đăng trùng lặp nhiều lần",
         "Khác"
     ];
 

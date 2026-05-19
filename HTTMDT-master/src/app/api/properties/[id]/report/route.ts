@@ -4,6 +4,29 @@ import { Report } from "@/models/Report";
 import { Property } from "@/models/Property";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 
+function getReportCategory(reason: string) {
+    const normalized = reason
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase();
+
+    if (/(spam|tin rac|quang cao|lap lai|dang trung|noi dung rac)/.test(normalized)) {
+        return "spam";
+    }
+
+    if (/(da ban|da cho thue|het hang|khong con|khong kha dung)/.test(normalized)) {
+        return "availability";
+    }
+
+    if (/(lua dao|sai su that|gia ao|sai vi tri|hinh anh muon|vi pham)/.test(normalized)) {
+        return "fraud";
+    }
+
+    return "other";
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id } = await params;
@@ -40,6 +63,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             propertyId: id,
             reporterId: session?.user?.id || null,
             reason: body.reason,
+            category: getReportCategory(body.reason),
             details: body.details || "",
             status: "pending"
         });

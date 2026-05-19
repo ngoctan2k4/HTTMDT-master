@@ -90,6 +90,7 @@ export default function AdminPropertiesPage() {
                 body: JSON.stringify(payload),
             });
             await fetchProperties();
+            window.dispatchEvent(new Event("admin-notifications-refresh"));
         } finally {
             setActionLoading(null);
         }
@@ -102,6 +103,7 @@ export default function AdminPropertiesPage() {
         try {
             await fetch(`/api/admin/properties/${id}`, { method: "DELETE" });
             await fetchProperties();
+            window.dispatchEvent(new Event("admin-notifications-refresh"));
         } finally {
             setActionLoading(null);
         }

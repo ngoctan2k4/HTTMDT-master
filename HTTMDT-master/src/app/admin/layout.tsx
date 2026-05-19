@@ -1,17 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { LayoutDashboard, Users, Building2, LogOut, AlertTriangle, Banknote, ShieldCheck, Ticket, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Building2, LogOut, AlertTriangle, Banknote, ShieldCheck, Ticket, Settings, MessageSquare } from "lucide-react";
+import { UnreadMessageBadge } from "@/components/messages/UnreadMessageBadge";
+import { AdminTaskBadge } from "@/components/admin/AdminTaskBadge";
 
 const navItems = [
-    { href: "/admin", label: "Tổng quan", icon: LayoutDashboard },
-    { href: "/admin/users", label: "Quản lý User", icon: Users },
-    { href: "/admin/properties", label: "Quản lý BĐS", icon: Building2 },
-    { href: "/admin/appointments", label: "Giao dịch / Lịch hẹn", icon: Banknote },
-    { href: "/admin/vouchers", label: "Quản lý Mã Giảm Giá", icon: Ticket },
-    { href: "/admin/moderation", label: "Xử lý Khiếu nại", icon: ShieldCheck },
-    { href: "/admin/settings", label: "Cấu hình Hệ thống", icon: Settings },
-];
+    { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, taskScope: null },
+    { href: "/admin/users", label: "Quản lý User", icon: Users, taskScope: null },
+    { href: "/admin/properties", label: "Quản lý BĐS", icon: Building2, taskScope: "properties" },
+    { href: "/admin/appointments", label: "Giao dịch / Lịch hẹn", icon: Banknote, taskScope: "appointments" },
+    { href: "/dashboard/messages", label: "Tin nhắn", icon: MessageSquare, taskScope: null },
+    { href: "/admin/vouchers", label: "Quản lý Mã Giảm Giá", icon: Ticket, taskScope: null },
+    { href: "/admin/reports", label: "Báo cáo cộng đồng", icon: AlertTriangle, taskScope: "reports" },
+    { href: "/admin/moderation", label: "Xử lý Khiếu nại", icon: ShieldCheck, taskScope: "moderation" },
+    { href: "/admin/settings", label: "Cấu hình Hệ thống", icon: Settings, taskScope: null },
+] as const;
 
 export default async function AdminLayout({
     children,
@@ -39,7 +43,7 @@ export default async function AdminLayout({
                 </div>
 
                 <nav className="px-4 space-y-1.5 flex-1">
-                    {navItems.map(({ href, label, icon: Icon }) => (
+                    {navItems.map(({ href, label, icon: Icon, taskScope }) => (
                         <Link
                             key={href}
                             href={href}
@@ -47,7 +51,9 @@ export default async function AdminLayout({
                         >
                             <div className="absolute inset-y-0 left-0 w-1 bg-primary rounded-r-md opacity-0 group-hover:opacity-100 transition-opacity" />
                             <Icon className="h-5 w-5 group-hover:scale-110 transition-transform duration-300" />
-                            {label}
+                            <span className="flex-1">{label}</span>
+                            {href === "/dashboard/messages" && <UnreadMessageBadge className="ml-auto ring-[#0f172a]" />}
+                            {taskScope && <AdminTaskBadge scope={taskScope} className="ml-auto" />}
                         </Link>
                     ))}
                 </nav>
