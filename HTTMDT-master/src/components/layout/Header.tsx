@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link";
-import { Search, Building2, PlusCircle, UserCircle, LogOut, Package, LayoutDashboard, Heart, ShoppingBag, MessageSquare, Wallet } from "lucide-react";
+import { Search, Building2, PlusCircle, UserCircle, LogOut, Package, LayoutDashboard, Heart, MessageSquare, Wallet } from "lucide-react";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -148,6 +148,10 @@ export function Header() {
                                         <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
                                             <LayoutDashboard className="h-4 w-4" />
                                             Tin của tôi
+                                        </Link>
+                                        <Link href="/dashboard/favorites" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
+                                            <Heart className="h-4 w-4" />
+                                            Tin đã lưu
                                         </Link>
                                         <Link href="/dashboard/billing" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
                                             <Wallet className="h-4 w-4" />

@@ -14,13 +14,12 @@ type UnreadMessageBadgeProps = {
 
 export function UnreadMessageBadge({ className = "", showZero = false }: UnreadMessageBadgeProps) {
     const { data: session } = useSession();
-    const [unreadCount, setUnreadCount] = useState(0);
+    const userId = session?.user?.id || "";
+    const [unreadState, setUnreadState] = useState({ userId: "", count: 0 });
+    const unreadCount = unreadState.userId === userId ? unreadState.count : 0;
 
     useEffect(() => {
-        if (!session?.user?.id) {
-            setUnreadCount(0);
-            return;
-        }
+        if (!userId) return;
 
         let cancelled = false;
 
@@ -30,7 +29,9 @@ export function UnreadMessageBadge({ className = "", showZero = false }: UnreadM
                 if (!res.ok) return;
 
                 const data = (await res.json()) as UnreadResponse;
-                if (!cancelled) setUnreadCount(Number(data.unreadCount || 0));
+                if (!cancelled) {
+                    setUnreadState({ userId, count: Number(data.unreadCount || 0) });
+                }
             } catch (error) {
                 console.error("Unread message badge error:", error);
             }
@@ -49,7 +50,7 @@ export function UnreadMessageBadge({ className = "", showZero = false }: UnreadM
             window.removeEventListener("focus", handleFocus);
             window.removeEventListener("message-unread-refresh", handleFocus);
         };
-    }, [session?.user?.id]);
+    }, [userId]);
 
     if (!showZero && unreadCount <= 0) return null;
 
