@@ -45,7 +45,6 @@ export function BookAppointmentModal({ propertyId, authorId }: { propertyId: str
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     propertyId, 
-                    sellerId: authorId, 
                     appointmentDate: appointmentDate.toISOString() 
                 })
             });

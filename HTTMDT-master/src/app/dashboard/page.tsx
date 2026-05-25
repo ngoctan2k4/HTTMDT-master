@@ -6,6 +6,7 @@ import { Property } from "@/models/Property";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { PropertyCard } from "@/components/property/PropertyCard";
 import { RenewButton } from "@/components/property/RenewButton";
+import { DeletePropertyButton } from "@/components/property/DeletePropertyButton";
 import { Badge } from "@/components/ui/badge";
 
 export const revalidate = 0;
@@ -102,7 +103,7 @@ export default async function DashboardPage() {
                   </div>
                 )}
                 
-                <div className="p-3 border-t bg-muted/20 mt-auto">
+                <div className="p-3 border-t bg-muted/20 mt-auto space-y-2">
                     <div className="mb-2 text-xs text-muted-foreground flex justify-between px-1">
                         <span>Hết hạn:</span>
                         <span className="font-semibold text-foreground">
@@ -110,6 +111,7 @@ export default async function DashboardPage() {
                         </span>
                     </div>
                     <RenewButton propertyId={property.id} />
+                    <DeletePropertyButton propertyId={property.id} />
                 </div>
               </div>
             );
@@ -119,4 +121,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-

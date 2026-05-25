@@ -228,7 +228,12 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                                         <Phone className="h-5 w-5" />
                                         {property.author.phone}
                                     </button>
-                                    <ContactSellerModal propertyId={property.id} authorId={property.ownerId || property.author.id} />
+                                    <ContactSellerModal
+                                        propertyId={property.id}
+                                        authorId={property.ownerId || property.author.id}
+                                        authorName={property.author.name}
+                                        propertyTitle={property.title}
+                                    />
                                 </>
                             )}
                             

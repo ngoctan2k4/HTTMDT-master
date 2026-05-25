@@ -32,6 +32,9 @@ function InboxContent() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const initialPeer = searchParams.get("peer");
+    const initialPeerName = searchParams.get("name");
+    const initialPropertyRef = searchParams.get("property");
+    const initialPropertyTitle = searchParams.get("propertyTitle");
     
     const [messages, setMessages] = useState<MessageType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,6 +59,26 @@ function InboxContent() {
 
         return Array.from(peerMap.values());
     }, [peers, supportPeer]);
+
+    useEffect(() => {
+        if (!initialPeer || !session?.user?.id || initialPeer === session.user.id) return;
+
+        setSupportPeer(prev => {
+            if (prev?.id === initialPeer) return prev;
+
+            return {
+                id: initialPeer,
+                name: initialPeerName || "Người dùng",
+                avatar: "",
+                lastMessage: "Chưa có tin nhắn",
+                lastMessageTime: new Date().toISOString(),
+                unreadCount: 0,
+                propertyRef: initialPropertyRef || undefined,
+                propertyTitle: initialPropertyTitle || undefined,
+            };
+        });
+        setActivePeerId(initialPeer);
+    }, [initialPeer, initialPeerName, initialPropertyRef, initialPropertyTitle, session?.user?.id]);
 
     const loadMessages = async (isBackground = false) => {
         try {
@@ -231,7 +254,7 @@ function InboxContent() {
                 id: data.id,
                 name: data.name || "Admin An Cư Plus",
                 avatar: data.avatar || "",
-                lastMessage: "Bắt đầu hội thoại với admin",
+                lastMessage: "Chưa có tin nhắn",
                 lastMessageTime: new Date().toISOString(),
                 unreadCount: 0,
             };
