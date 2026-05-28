@@ -16,7 +16,11 @@ export default async function Home() {
 
   try {
     await dbConnect();
-    const activeCondition = { expiryDate: { $not: { $lte: new Date() } } };
+    const activeCondition = {
+      expiryDate: { $not: { $lte: new Date() } },
+      isHidden: { $ne: true },
+      status: "approved",
+    };
 
     // Fetch featured properties
     const featuredPropertiesRaw = await Property.find({ isFeatured: true, ...activeCondition }).limit(8).lean();

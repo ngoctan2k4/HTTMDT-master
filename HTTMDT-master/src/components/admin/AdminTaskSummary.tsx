@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Banknote, Building2, ShieldAlert, TriangleAlert } from "lucide-react";
+import { AlertCircle, Banknote, Building2, TriangleAlert } from "lucide-react";
 
 type AdminNotificationsResponse = {
     total?: number;
@@ -64,13 +64,6 @@ export function AdminTaskSummary() {
                 count: Number(detail.pendingReports || 0),
                 icon: TriangleAlert,
                 color: "text-red-600 bg-red-50 border-red-200",
-            },
-            {
-                href: "/admin/moderation",
-                label: "Can xem xet vi pham",
-                count: Number(detail.reviewProperties || 0) + Number(detail.pendingFraudReports || 0),
-                icon: ShieldAlert,
-                color: "text-amber-600 bg-amber-50 border-amber-200",
             },
             {
                 href: "/admin/appointments",

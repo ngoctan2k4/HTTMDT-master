@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type AdminNotificationKey = "properties" | "moderation" | "reports" | "appointments";
+type AdminNotificationKey = "properties" | "reports" | "appointments";
 
 type AdminNotificationsResponse = {
     notifications?: Partial<Record<AdminNotificationKey, number>>;

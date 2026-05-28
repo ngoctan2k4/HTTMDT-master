@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { LayoutDashboard, Users, Building2, LogOut, AlertTriangle, Banknote, ShieldCheck, Ticket, Settings, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, Building2, LogOut, AlertTriangle, Banknote, Ticket, Settings, MessageSquare } from "lucide-react";
 import { UnreadMessageBadge } from "@/components/messages/UnreadMessageBadge";
 import { AdminTaskBadge } from "@/components/admin/AdminTaskBadge";
 
@@ -13,7 +13,6 @@ const navItems = [
     { href: "/dashboard/messages", label: "Tin nhắn", icon: MessageSquare, taskScope: null },
     { href: "/admin/vouchers", label: "Quản lý Mã Giảm Giá", icon: Ticket, taskScope: null },
     { href: "/admin/reports", label: "Báo cáo cộng đồng", icon: AlertTriangle, taskScope: "reports" },
-    { href: "/admin/moderation", label: "Xử lý Khiếu nại", icon: ShieldCheck, taskScope: "moderation" },
     { href: "/admin/settings", label: "Cấu hình Hệ thống", icon: Settings, taskScope: null },
 ] as const;
 

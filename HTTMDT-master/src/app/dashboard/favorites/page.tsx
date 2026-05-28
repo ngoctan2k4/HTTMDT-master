@@ -52,7 +52,12 @@ export default async function FavoritePropertiesPage() {
     await dbConnect();
     const favorites = (await Favorite.find({ ownerId }).sort({ createdAt: -1 }).lean()) as unknown as FavoriteDocument[];
     const propertyIds = favorites.map((favorite) => favorite.propertyId).filter(Boolean);
-    const rows = (await Property.find({ _id: { $in: propertyIds } }).lean()) as unknown as PropertyDocument[];
+    const rows = (await Property.find({
+      _id: { $in: propertyIds },
+      status: "approved",
+      isHidden: { $ne: true },
+      expiryDate: { $not: { $lte: new Date() } },
+    }).lean()) as unknown as PropertyDocument[];
     const byId = new Map<string, PropertyDocument>(
       rows.map((property) => [property._id.toString(), property])
     );

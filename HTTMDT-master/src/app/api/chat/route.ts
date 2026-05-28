@@ -500,7 +500,8 @@ async function getPropertyContext(userQuery: string, pagePath?: unknown) {
 
     const properties = await Property.find({
       expiryDate: { $not: { $lte: new Date() } },
-      status: { $nin: ["rejected", "sold"] },
+      status: "approved",
+      isHidden: { $ne: true },
     })
       .sort({ isFeatured: -1, postedDate: -1 })
       .limit(300)

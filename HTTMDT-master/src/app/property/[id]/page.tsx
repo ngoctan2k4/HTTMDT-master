@@ -29,6 +29,17 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
         const resolvedParams = await params;
         propertyRaw = await Property.findById(resolvedParams.id).lean();
 
+        const isPubliclyVisible =
+            propertyRaw &&
+            (propertyRaw as any).status === "approved" &&
+            (propertyRaw as any).isHidden !== true;
+        const canViewHidden =
+            propertyRaw &&
+            (session?.user?.role === "admin" || sessionUserId === (propertyRaw as any).ownerId);
+        if (propertyRaw && !isPubliclyVisible && !canViewHidden) {
+            propertyRaw = null;
+        }
+
         const ownerId = sessionUserId;
         const propertyId = (propertyRaw as any)?._id;
         if (ownerId && propertyId) {
@@ -187,6 +198,8 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                         </div>
                     </div>
 
+                    <AdBanner type="horizontal" variant="furniture" />
+
                     {/* Location Map */}
                     <div className="pt-6 border-t pb-4">
                         <h2 className="text-xl font-semibold mb-4">Vị trí trên bản đồ</h2>
@@ -262,7 +275,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
 
                     {/* AdBanner */}
                     <div>
-                        <AdBanner type="vertical" />
+                        <AdBanner type="vertical" variant="bank" />
                     </div>
                 </div>
             </div>

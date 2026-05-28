@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
                 query.isHidden = true;
             } else {
                 query.status = status;
-                query.isHidden = false;
+                query.isHidden = { $ne: true };
             }
         }
 

@@ -18,7 +18,7 @@ export async function GET() {
         
         // Thống kê Bất động sản
         const totalProperties = await Property.countDocuments();
-        const activeProperties = await Property.countDocuments({ status: "approved", isHidden: false });
+        const activeProperties = await Property.countDocuments({ status: "approved", isHidden: { $ne: true } });
         const pendingProperties = await Property.countDocuments({ status: "pending" });
         
         // Tin đăng gần đây (5 tin mới nhất)

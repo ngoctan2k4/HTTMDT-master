@@ -18,7 +18,6 @@ export async function GET() {
 
         const [
             pendingProperties,
-            reviewProperties,
             pendingReports,
             pendingSpamReports,
             pendingFraudReports,
@@ -28,9 +27,6 @@ export async function GET() {
                 status: { $in: ["pending", "pending_verification"] },
                 isHidden: { $ne: true },
             }),
-            Property.countDocuments({
-                $or: [{ status: "under_review" }, { isHidden: true }],
-            }),
             Report.countDocuments({ status: "pending" }),
             Report.countDocuments({ status: "pending", category: "spam" }),
             Report.countDocuments({ status: "pending", category: "fraud" }),
@@ -39,7 +35,6 @@ export async function GET() {
 
         const notifications = {
             properties: pendingProperties,
-            moderation: reviewProperties + pendingFraudReports,
             reports: pendingReports,
             reportSpam: pendingSpamReports,
             appointments: pendingAppointments,
@@ -47,7 +42,6 @@ export async function GET() {
 
         const total =
             notifications.properties +
-            notifications.moderation +
             notifications.reports +
             notifications.appointments;
 
@@ -55,7 +49,6 @@ export async function GET() {
             notifications,
             detail: {
                 pendingProperties,
-                reviewProperties,
                 pendingReports,
                 pendingSpamReports,
                 pendingFraudReports,

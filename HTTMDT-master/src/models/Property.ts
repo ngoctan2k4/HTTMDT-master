@@ -17,6 +17,7 @@ const propertySchema = new mongoose.Schema({
     baths: { type: Number, default: 0 },
     area: { type: Number, required: true },
     isFeatured: { type: Boolean, default: false },
+    isHidden: { type: Boolean, default: false, index: true },
     author: {
         name: { type: String, default: "Owner" },
         phone: { type: String, default: "0901234567" },

@@ -145,7 +145,7 @@ export default function AdminReportsPage() {
         }
     };
 
-    const handleHideProperty = async (propertyId: string) => {
+    const handleHideProperty = async (propertyId: string, reportId: string) => {
         if (!confirm("Xác nhận ẩn bài đăng này khỏi hệ thống?")) return;
         try {
             const res = await fetch(`/api/admin/properties/${propertyId}`, {
@@ -154,6 +154,7 @@ export default function AdminReportsPage() {
                 body: JSON.stringify({ isHidden: true, status: "under_review" }),
             });
             if (res.ok) {
+                await updateStatus(reportId, "resolved");
                 alert("Đã ẩn bài đăng và chuyển sang trạng thái cần xem xét.");
                 await loadReports();
                 window.dispatchEvent(new Event("admin-notifications-refresh"));
@@ -328,7 +329,7 @@ export default function AdminReportsPage() {
                                                         </button>
                                                     )}
                                                     {property && !property.isHidden && (
-                                                        <button onClick={() => handleHideProperty(property._id)} title="Ẩn tin và chuyển xem xét" className="rounded-md p-1.5 text-amber-600 hover:bg-amber-100">
+                                                        <button onClick={() => handleHideProperty(property._id, report._id)} title="Ẩn tin và chuyển xem xét" className="rounded-md p-1.5 text-amber-600 hover:bg-amber-100">
                                                             <ShieldAlert className="h-4 w-4" />
                                                         </button>
                                                     )}

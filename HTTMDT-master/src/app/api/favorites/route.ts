@@ -36,7 +36,12 @@ export async function GET() {
       .map((f: any) => f.propertyId)
       .filter(Boolean);
 
-    const propertiesRaw = await Property.find({ _id: { $in: propertyIds } }).lean();
+    const propertiesRaw = await Property.find({
+      _id: { $in: propertyIds },
+      status: "approved",
+      isHidden: { $ne: true },
+      expiryDate: { $not: { $lte: new Date() } },
+    }).lean();
     const map = new Map<string, any>(
       propertiesRaw.map((p: any) => [p._id.toString(), p])
     );
@@ -74,6 +79,16 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
+
+    const property = await Property.exists({
+      _id: oid,
+      status: "approved",
+      isHidden: { $ne: true },
+      expiryDate: { $not: { $lte: new Date() } },
+    });
+    if (!property) {
+      return NextResponse.json({ error: "Tin không tồn tại hoặc không còn hiển thị." }, { status: 404 });
+    }
 
     // Toggle favorite
     const existing = await Favorite.findOne({ ownerId, propertyId: oid }).lean();

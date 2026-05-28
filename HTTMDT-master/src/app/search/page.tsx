@@ -36,7 +36,9 @@ export default async function SearchPage({
 
     // Build query from resolvedSearchParams
     const query: any = {
-        expiryDate: { $not: { $lte: new Date() } }
+        expiryDate: { $not: { $lte: new Date() } },
+        isHidden: { $ne: true },
+        status: "approved",
     };
 
     const qParam = typeof resolvedSearchParams.q === 'string' ? resolvedSearchParams.q : '';
