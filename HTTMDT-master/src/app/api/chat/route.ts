@@ -63,6 +63,7 @@ const cities = [
 ];
 
 const propertyTypeKeywords = [
+  { keywords: ["nha tro", "o tro", "room"], label: "PhĂ²ng trá»" },
   { keywords: ["biet thu", "villa"], label: "Biệt thự" },
   { keywords: ["chung cu", "can ho", "apartment"], label: "Căn hộ chung cư" },
   { keywords: ["nha pho", "nha rieng"], label: "Nhà phố" },

@@ -3,7 +3,7 @@
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, Loader2, MessageSquare, Send, Sparkles, X } from "lucide-react";
+import { Bot, Loader2, MessageCircle, Mic, MicOff, Send, Sparkles, X } from "lucide-react";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -15,6 +15,32 @@ type ChatResponse = {
   error?: string;
   details?: string;
 };
+
+type SpeechRecognitionConstructor = new () => SpeechRecognition;
+
+type SpeechRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+type SpeechRecognitionEvent = {
+  results: ArrayLike<{
+    0: { transcript: string };
+  }>;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 const initialMessages: ChatMessage[] = [
   {
@@ -72,8 +98,11 @@ export function Chatbot() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(true);
   const [restrictedWords, setRestrictedWords] = useState<string[]>(defaultRestrictedWords);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -94,6 +123,10 @@ export function Chatbot() {
     };
 
     fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    setVoiceSupported(typeof window !== "undefined" && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition));
   }, []);
 
   useEffect(() => {
@@ -168,18 +201,53 @@ export function Chatbot() {
     }
   }
 
+  function toggleVoiceInput() {
+    if (!voiceSupported || loading) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      setVoiceSupported(false);
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.lang = "vi-VN";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      if (transcript) setInput(transcript);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognitionRef.current = recognition;
+    setIsListening(true);
+    recognition.start();
+  }
+
   return (
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full shadow-2xl transition-all ${
-          isOpen ? "pointer-events-none scale-50 opacity-0" : "scale-100 opacity-100 hover:scale-110"
+        className={`fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-white/70 bg-white shadow-xl shadow-blue-900/20 transition-all ${
+          isOpen ? "pointer-events-none scale-50 opacity-0" : "scale-100 opacity-100 hover:-translate-y-0.5 hover:shadow-2xl"
         }`}
-        style={{ background: "linear-gradient(135deg, #0ea5e9, #2563eb, #8b5cf6)" }}
         aria-label="Mở trợ lý AI"
       >
-        <div className="absolute inset-0 animate-ping rounded-full bg-blue-600 opacity-20" />
-        <MessageSquare className="relative z-10 h-7 w-7 text-white" />
+        <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-sky-400 via-blue-600 to-indigo-600 opacity-90" />
+        <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white">
+          <MessageCircle className="h-6 w-6" />
+        </div>
+        <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400" />
       </button>
 
       {isOpen && (
@@ -251,6 +319,20 @@ export function Chatbot() {
               className="min-h-11 max-h-24 flex-1 resize-none rounded-2xl border bg-slate-100/50 px-4 py-2.5 text-[14px] transition-all focus-visible:bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500"
               rows={1}
             />
+            <button
+              type="button"
+              onClick={toggleVoiceInput}
+              disabled={!voiceSupported || loading}
+              title={voiceSupported ? "Nhập bằng giọng nói" : "Trình duyệt chưa hỗ trợ nhập giọng nói"}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all disabled:opacity-40 ${
+                isListening
+                  ? "border-red-200 bg-red-50 text-red-600"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-indigo-200 hover:text-indigo-600"
+              }`}
+              aria-label="Nhập bằng giọng nói"
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
             <button
               type="submit"
               disabled={!input.trim() || loading}
