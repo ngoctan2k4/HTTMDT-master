@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import dbConnect from "@/lib/db";
 import { PaymentTransaction } from "@/models/PaymentTransaction";
 import { completePayment } from "@/lib/payments";
@@ -9,6 +10,26 @@ function getHeaderSecret(req: Request) {
   const bearer = req.headers.get("authorization") || "";
   if (bearer.toLowerCase().startsWith("bearer ")) return bearer.slice(7).trim();
   return req.headers.get("x-webhook-secret") || "";
+}
+
+function normalizeMatchText(value: string) {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function verifySePaySignature(req: Request, rawBody: string, secret: string) {
+  const signature = req.headers.get("x-sepay-signature") || "";
+  const timestamp = req.headers.get("x-sepay-timestamp") || "";
+  const received = signature.replace(/^sha256=/i, "").trim();
+  if (!received || !timestamp) return false;
+
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(`${timestamp}.${rawBody}`, "utf8")
+    .digest("hex");
+
+  const receivedBuffer = Buffer.from(received, "hex");
+  const expectedBuffer = Buffer.from(expected, "hex");
+  return receivedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
 }
 
 function normalizePayload(body: any) {
@@ -24,11 +45,20 @@ function normalizePayload(body: any) {
 export async function POST(req: Request) {
   try {
     const expectedSecret = process.env.PAYMENT_WEBHOOK_SECRET;
-    if (expectedSecret && getHeaderSecret(req) !== expectedSecret) {
-      return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 });
+    const rawBody = await req.text();
+    const hasSePaySignature = Boolean(req.headers.get("x-sepay-signature"));
+
+    if (expectedSecret) {
+      const isValid = hasSePaySignature
+        ? verifySePaySignature(req, rawBody, expectedSecret)
+        : getHeaderSecret(req) === expectedSecret;
+
+      if (!isValid) {
+        return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+      }
     }
 
-    const body = await req.json();
+    const body = JSON.parse(rawBody);
     const tx = normalizePayload(body);
 
     if (tx.transferType && !["in", "credit", "deposit"].includes(tx.transferType)) {
@@ -38,7 +68,8 @@ export async function POST(req: Request) {
     await dbConnect();
 
     const pendingCodes = await PaymentTransaction.distinct("orderCode", { status: "pending" }) as string[];
-    const matchedCode = pendingCodes.find((code) => tx.content.toUpperCase().includes(code));
+    const normalizedContent = normalizeMatchText(tx.content);
+    const matchedCode = pendingCodes.find((code) => normalizedContent.includes(normalizeMatchText(code)));
     const matchedPayment = matchedCode
       ? await PaymentTransaction.findOne({ status: "pending", orderCode: matchedCode })
       : null;

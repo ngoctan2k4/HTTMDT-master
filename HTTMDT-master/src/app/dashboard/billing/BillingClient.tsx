@@ -31,6 +31,7 @@ export default function BillingClient({ usedFreePosts, purchasedPosts, freeQuota
     const [checkoutLoading, setCheckoutLoading] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState<{ amount: number, price: number, name: string } | null>(null);
     const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
+    const [paymentSuccessMessage, setPaymentSuccessMessage] = useState("");
 
     const [customAmount, setCustomAmount] = useState<number | "">("");
     const unitPrice = 50000;
@@ -51,6 +52,7 @@ export default function BillingClient({ usedFreePosts, purchasedPosts, freeQuota
         setAppliedVoucher(null);
         setVoucherError("");
         setPaymentRequest(null);
+        setPaymentSuccessMessage("");
         setShowCheckout(true);
     };
 
@@ -118,6 +120,7 @@ export default function BillingClient({ usedFreePosts, purchasedPosts, freeQuota
                 setPaymentRequest((prev) => prev ? { ...prev, status: data.payment.status } : prev);
                 if (data.payment.status === "success") {
                     window.clearInterval(timer);
+                    setPaymentSuccessMessage("Thanh toán thành công! Lượt đăng đã được cộng vào ví.");
                     alert("Thanh toán thành công! Lượt đăng đã được cộng vào ví.");
                     setShowCheckout(false);
                     router.refresh();
@@ -144,6 +147,11 @@ export default function BillingClient({ usedFreePosts, purchasedPosts, freeQuota
 
     return (
         <div className="space-y-8">
+            {paymentSuccessMessage && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    {paymentSuccessMessage}
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-10"><Wallet className="w-32 h-32" /></div>
@@ -228,8 +236,8 @@ export default function BillingClient({ usedFreePosts, purchasedPosts, freeQuota
 
             {/* Checkout Modal Copied/Adapted from Post page */}
             {showCheckout && selectedPackage && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-background rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-background rounded-2xl shadow-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <div className="p-6 border-b flex justify-between items-center text-center space-y-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
                             <h3 className="font-bold text-xl">Thanh toán Ví V-Coin</h3>
                             <button disabled={checkoutLoading} onClick={() => setShowCheckout(false)} className="text-white hover:text-red-400">
@@ -237,7 +245,7 @@ export default function BillingClient({ usedFreePosts, purchasedPosts, freeQuota
                             </button>
                         </div>
                         
-                        <div className="p-6 space-y-6">
+                        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto max-h-[calc(100vh-7rem)]">
                             <div className="flex justify-between items-center bg-slate-50 p-4 border rounded-lg">
                                 <div>
                                     <h4 className="font-bold text-slate-800">{selectedPackage.name}</h4>

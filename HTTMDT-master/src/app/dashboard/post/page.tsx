@@ -624,8 +624,8 @@ export default function PostListingPage() {
 
       {/* Checkout Modal */}
       {showCheckout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-background rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto p-3 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-background rounded-2xl shadow-xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 border-b flex justify-between items-center text-center space-y-2 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
               <h3 className="font-bold text-xl">Thanh toán Phí Đăng Tin</h3>
               <button disabled={checkoutLoading} onClick={() => setShowCheckout(false)} className="text-white hover:text-red-400">
@@ -633,7 +633,7 @@ export default function PostListingPage() {
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto max-h-[calc(100vh-7rem)]">
               <div className="text-center">
                 <div className="text-sm font-semibold uppercase text-red-500 mb-1">Cảnh báo Quota</div>
                 <h4 className="text-xl font-bold">Bạn đã hết 3 lượt đăng tự do!</h4>
