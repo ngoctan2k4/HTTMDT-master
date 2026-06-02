@@ -22,6 +22,45 @@ const PROVINCES = [
   "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
 ];
 
+function normalizeSearchText(value: string) {
+    return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase()
+        .replace(/\b([a-z]{3,})(s|f|r|x|j|w)\b/g, "$1");
+}
+
+function escapeRegex(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getQueryIntent(rawQuery: string, correctedQuery: string) {
+    const normalized = normalizeSearchText(`${rawQuery} ${correctedQuery}`);
+    const intent: { demand?: string; propertyType?: string } = {};
+
+    if (/\b(cho thue|thue|can thue|muon thue)\b/.test(normalized)) {
+        intent.demand = "Cho thu\u00ea";
+    } else if (/\b(mua|ban|mua ban|can mua)\b/.test(normalized)) {
+        intent.demand = "Mua b\u00e1n";
+    }
+
+    if (/\b(phong tro|nha tro|o tro|tro|room)\b/.test(normalized)) {
+        intent.propertyType = "Ph\u00f2ng tr\u1ecd";
+    } else if (/\b(biet thu|villa)\b/.test(normalized)) {
+        intent.propertyType = "Bi\u1ec7t th\u1ef1";
+    } else if (/\b(chung cu|can ho|apartment)\b/.test(normalized)) {
+        intent.propertyType = "C\u0103n h\u1ed9";
+    } else if (/\b(dat nen|dat)\b/.test(normalized)) {
+        intent.propertyType = "\u0110\u1ea5t n\u1ec1n";
+    } else if (/\b(nha pho|nha rieng)\b/.test(normalized)) {
+        intent.propertyType = "Nh\u00e0";
+    }
+
+    return intent;
+}
+
 export default async function SearchPage({
     searchParams,
 }: {
@@ -43,8 +82,13 @@ export default async function SearchPage({
 
     const qParam = typeof resolvedSearchParams.q === 'string' ? resolvedSearchParams.q : '';
     const { corrected: q, hasCorrection, original: qOriginal } = autoCorrect(qParam);
+    const queryIntent = getQueryIntent(qOriginal, q);
 
-    if (q) {
+    if (queryIntent.propertyType) {
+        query.propertyType = { $regex: escapeRegex(queryIntent.propertyType), $options: 'i' };
+    }
+
+    if (q && !queryIntent.propertyType && !queryIntent.demand) {
         query.$or = [
             { title: { $regex: q, $options: 'i' } },
             { description: { $regex: q, $options: 'i' } },
@@ -60,6 +104,10 @@ export default async function SearchPage({
         query.type = 'Mua bán';
     } else if (type === 'cho-thue') {
         query.type = 'Cho thuê';
+    }
+
+    if (!query.type && queryIntent.demand) {
+        query.type = queryIntent.demand;
     }
 
     const city = typeof resolvedSearchParams.city === 'string' ? resolvedSearchParams.city : '';

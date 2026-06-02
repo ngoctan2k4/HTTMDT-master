@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import { Property } from "@/models/Property";
 import { Setting } from "@/models/Setting";
+import { autoCorrect } from "@/lib/autoCorrect";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,7 @@ const cities = [
 ];
 
 const propertyTypeKeywords = [
+  { keywords: ["nha tro", "o tro", "room", "troj"], label: "Ph\u00f2ng tr\u1ecd" },
   { keywords: ["nha tro", "o tro", "room"], label: "PhĂ²ng trá»" },
   { keywords: ["biet thu", "villa"], label: "Biệt thự" },
   { keywords: ["chung cu", "can ho", "apartment"], label: "Căn hộ chung cư" },
@@ -485,7 +487,8 @@ async function getPropertyContext(userQuery: string, pagePath?: unknown) {
   try {
     await dbConnect();
 
-    const parsed = parseSearchQuery(userQuery);
+    const correctedQuery = autoCorrect(userQuery).corrected;
+    const parsed = parseSearchQuery(correctedQuery);
     const currentPropertyId = getCurrentPropertyId(pagePath);
 
     if (!parsed.isSearchIntent && !currentPropertyId) {

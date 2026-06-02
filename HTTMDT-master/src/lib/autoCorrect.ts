@@ -1,4 +1,6 @@
 export const CORRECTIONS: Record<string, string> = {
+    "tro": "Ph\u00f2ng tr\u1ecd", "troj": "Ph\u00f2ng tr\u1ecd", "nhatro": "Nh\u00e0 tr\u1ecd",
+    "biet thuj": "Bi\u1ec7t th\u1ef1", "biet thuw": "Bi\u1ec7t th\u1ef1", "biet thux": "Bi\u1ec7t th\u1ef1",
     // Provinces & Cities
     "ha noi": "Hà Nội", "hanoi": "Hà Nội", "hn": "Hà Nội",
     "ho chi minh": "Hồ Chí Minh", "hcm": "Hồ Chí Minh", "sg": "Hồ Chí Minh", "sai gon": "Hồ Chí Minh",
@@ -45,6 +47,10 @@ export const CORRECTIONS: Record<string, string> = {
     "dong da": "Đống Đa", "ba dinh": "Ba Đình", "hai ba trung": "Hai Bà Trưng", "hoang mai": "Hoàng Mai", "thanh xuan": "Thanh Xuân", "long bien": "Long Biên", "tay ho": "Tây Hồ"
 };
 
+function stripDanglingTelex(value: string) {
+    return value.replace(/\b([a-z]{3,})(s|f|r|x|j|w)\b/gi, "$1");
+}
+
 /**
  * Tự động sửa lỗi/thêm dấu cho chuỗi tìm kiếm dựa trên từ điển phổ biến
  */
@@ -55,13 +61,17 @@ export function autoCorrect(query: string): { original: string, corrected: strin
 
     let originalQuery = query;
     let normalizedQuery = query.toLowerCase().trim();
+    const normalizedForMatch = stripDanglingTelex(normalizedQuery);
     let finalStr = originalQuery;
     let hasCorrection = false;
     let suggestions: string[] = [];
 
     // Nếu match cả cụm (VD ng dùng gõ "hcm")
-    if (CORRECTIONS[normalizedQuery] && CORRECTIONS[normalizedQuery].toLowerCase() !== normalizedQuery) {
-        finalStr = CORRECTIONS[normalizedQuery];
+    if (
+        (CORRECTIONS[normalizedQuery] && CORRECTIONS[normalizedQuery].toLowerCase() !== normalizedQuery) ||
+        (CORRECTIONS[normalizedForMatch] && CORRECTIONS[normalizedForMatch].toLowerCase() !== normalizedForMatch)
+    ) {
+        finalStr = CORRECTIONS[normalizedQuery] || CORRECTIONS[normalizedForMatch];
         hasCorrection = true;
         suggestions.push(finalStr);
     } else {
@@ -69,7 +79,7 @@ export function autoCorrect(query: string): { original: string, corrected: strin
         // Sort keys by length descending to match longest possible phrases ("ho chi minh" before "hcm")
         const sortedKeys = Object.keys(CORRECTIONS).sort((a, b) => b.length - a.length);
         
-        let tempStrToLower = normalizedQuery;
+        let tempStrToLower = normalizedForMatch;
         
         for (const key of sortedKeys) {
             // Check if word boundary (e.g. `ha noi`, not `chanoi` )
@@ -100,7 +110,7 @@ export function autoCorrect(query: string): { original: string, corrected: strin
     
     // Add additional logic to build a list of autocomplete suggestions if the user is typing
     // Xoá dấu telex cơ bản ở cuối để gợi ý rộng hơn (VD: phongs -> phong)
-    let deTelexedQuery = normalizedQuery.replace(/([a-z]+)(s|f|r|x|j)\b/gi, '$1');
+    let deTelexedQuery = stripDanglingTelex(normalizedQuery);
 
     if (query.length > 1) {
         for (const [key, value] of Object.entries(CORRECTIONS)) {
