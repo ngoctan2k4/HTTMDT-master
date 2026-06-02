@@ -273,6 +273,7 @@ function parseSearchQuery(query: string): ParsedSearch {
     (hasSearchVerb && hasPrice) ||
     (Boolean(result.citySlug) && hasPropertyTerm) ||
     (Boolean(result.propertyType) && hasPrice) ||
+    Boolean(result.propertyType) ||
     hasPrice;
 
   result.isSearchIntent = asksGeneralInfo && !hasPrice ? false : asksListing;
@@ -570,15 +571,6 @@ async function getPropertyContext(userQuery: string, pagePath?: unknown) {
 export async function POST(req: Request) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === "PASTE_YOUR_GEMINI_API_KEY_HERE") {
-      return NextResponse.json(
-        {
-          error: "Chưa cấu hình GEMINI_API_KEY.",
-          details: "Thêm GEMINI_API_KEY vào file .env.local rồi khởi động lại dev server.",
-        },
-        { status: 500 }
-      );
-    }
 
     const body = await req.json();
     const messages: ChatMessage[] = Array.isArray(body?.messages) ? body.messages.filter(isChatMessage) : [];
@@ -616,6 +608,13 @@ export async function POST(req: Request) {
 
     if (parsed.isSearchIntent) {
       return NextResponse.json({ reply: formatDirectReply(mode, parsed, candidates) });
+    }
+
+    if (!apiKey || apiKey === "PASTE_YOUR_GEMINI_API_KEY_HERE") {
+      return NextResponse.json({
+        reply:
+          "Tôi đang ở chế độ tra cứu dữ liệu nội bộ vì hệ thống chưa cấu hình khóa AI. Bạn có thể hỏi theo nhu cầu cụ thể như: nhà trọ Hà Nội dưới 5 triệu, biệt thự Hồ Chí Minh khoảng 7 tỷ, hoặc căn hộ cho thuê ở Đà Nẵng.",
+      });
     }
 
     const systemPrompt = `
