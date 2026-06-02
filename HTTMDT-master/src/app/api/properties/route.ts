@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/db";
 import { Property } from "@/models/Property";
 import { User } from "@/models/User";
@@ -102,11 +103,12 @@ export async function POST(req: Request) {
     const usedFree = dbUser?.usedFreePosts || 0;
     const purchased = dbUser?.purchasedPosts || 0;
 
+    let quotaIncrement: { usedFreePosts?: number; purchasedPosts?: number } | null = null;
     if (dbUser?.role !== "admin") {
       if (usedFree < FREE_QUOTA) {
-        await User.findByIdAndUpdate(ownerId, { $inc: { usedFreePosts: 1 } });
+        quotaIncrement = { usedFreePosts: 1 };
       } else if (purchased > 0) {
-        await User.findByIdAndUpdate(ownerId, { $inc: { purchasedPosts: -1 } });
+        quotaIncrement = { purchasedPosts: -1 };
       } else {
         return NextResponse.json(
           { errorCode: "OVER_QUOTA", error: "Bạn đã hết lượt đăng tin miễn phí. Vui lòng thanh toán để mua thêm lượt đăng." }, 
@@ -128,33 +130,52 @@ export async function POST(req: Request) {
     const autoApproveSetting = await Setting.findOne({ key: "autoApproveProperties" }).lean() as any;
     const finalStatus = autoApproveSetting?.value === true ? "approved" : "pending";
 
-    const doc = await Property.create({
-      ownerId,
-      title: String(title).trim(),
-      description: String(description).trim(),
-      address: String(address).trim(),
-      city: String(city).trim(),
-      type: normalizedDemand,
-      propertyType: String(propertyType),
-      area: Number(area),
-      beds: beds ? Number(beds) : 0,
-      baths: baths ? Number(baths) : 0,
-      price,
-      priceValue,
-      images: Array.isArray(imageUrls) ? imageUrls.filter((x) => typeof x === "string") : [],
-      videoUrl: typeof videoUrl === "string" ? videoUrl : undefined,
-      isFeatured: Boolean(isFeatured),
-      author: {
-        name: session.user?.name || "Owner",
-        email: session.user?.email || undefined,
-        avatar: session.user?.image || "",
-        userType: userRoleType,
-        isVerified: userVerified,
-      },
-      status: finalStatus,
-      postedDate: new Date(),
-      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    });
+    const mongoSession = await mongoose.startSession();
+    mongoSession.startTransaction();
+
+    let doc;
+    try {
+      const docs = await Property.create([{
+        ownerId,
+        title: String(title).trim(),
+        description: String(description).trim(),
+        address: String(address).trim(),
+        city: String(city).trim(),
+        type: normalizedDemand,
+        propertyType: String(propertyType),
+        area: Number(area),
+        beds: beds ? Number(beds) : 0,
+        baths: baths ? Number(baths) : 0,
+        price,
+        priceValue,
+        images: Array.isArray(imageUrls) ? imageUrls.filter((x) => typeof x === "string") : [],
+        videoUrl: typeof videoUrl === "string" ? videoUrl : undefined,
+        isFeatured: Boolean(isFeatured),
+        author: {
+          name: session.user?.name || "Owner",
+          email: session.user?.email || undefined,
+          avatar: session.user?.image || "",
+          userType: userRoleType,
+          isVerified: userVerified,
+        },
+        status: finalStatus,
+        postedDate: new Date(),
+        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      }], { session: mongoSession });
+
+      doc = docs[0];
+
+      if (quotaIncrement) {
+        await User.findByIdAndUpdate(ownerId, { $inc: quotaIncrement }, { session: mongoSession });
+      }
+
+      await mongoSession.commitTransaction();
+    } catch (error) {
+      await mongoSession.abortTransaction();
+      throw error;
+    } finally {
+      mongoSession.endSession();
+    }
 
     return NextResponse.json({ id: doc._id.toString() }, { status: 201 });
   } catch (e: unknown) {

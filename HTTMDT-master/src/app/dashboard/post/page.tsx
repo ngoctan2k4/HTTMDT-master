@@ -20,6 +20,17 @@ type CreatePropertyResponse = {
   error?: string;
 };
 
+type PaymentRequest = {
+  id: string;
+  orderCode: string;
+  finalPrice: number;
+  status: "pending" | "success" | "failed" | "expired";
+  qrImageUrl: string;
+  bankId: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
+};
+
 function getErrorMessage(e: unknown, fallback: string) {
   if (e instanceof Error) return e.message;
   if (e && typeof e === "object" && "message" in e) {
@@ -90,7 +101,7 @@ export default function PostListingPage() {
 
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("qr");
+  const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
 
   const canSubmit = useMemo(() => {
     return (
@@ -149,18 +160,19 @@ export default function PostListingPage() {
     }
   }
 
-  async function handlePaymentSuccess() {
+  async function handleCreatePayment() {
     setCheckoutLoading(true);
     try {
-      const res = await fetch("/api/users/me/buy-post", { method: "POST" });
+      const res = await fetch("/api/payments/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 1 }),
+      });
+      const data = await res.json();
       if (res.ok) {
-        setShowCheckout(false);
-        setSuccess("Thanh toán thành công! Sẽ tự động đăng bài...");
-        setTimeout(() => {
-          handleSubmit();
-        }, 500);
+        setPaymentRequest(data.payment);
       } else {
-        alert("Lỗi thanh toán. Hãy thử lại.");
+        alert(data.error || "Không thể tạo mã QR thanh toán.");
       }
     } catch(err) {
       alert("Lỗi kết nối.");
@@ -217,6 +229,7 @@ export default function PostListingPage() {
       const createData = (await createRes.json()) as CreatePropertyResponse & { errorCode?: string };
       if (!createRes.ok) {
         if (createData?.errorCode === "OVER_QUOTA") {
+          setPaymentRequest(null);
           setShowCheckout(true);
           return;
         }
@@ -232,6 +245,30 @@ export default function PostListingPage() {
       setSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!paymentRequest || paymentRequest.status !== "pending") return;
+
+    const timer = window.setInterval(async () => {
+      try {
+        const res = await fetch(`/api/payments/${paymentRequest.id}`);
+        const data = await res.json();
+        if (!res.ok || !data.payment?.status) return;
+
+        setPaymentRequest((prev) => prev ? { ...prev, status: data.payment.status } : prev);
+        if (data.payment.status === "success") {
+          window.clearInterval(timer);
+          setShowCheckout(false);
+          setSuccess("Thanh toán thành công! Đang gửi lại tin đăng...");
+          setTimeout(() => handleSubmit(), 500);
+        }
+      } catch {
+        // Continue polling while waiting for bank confirmation.
+      }
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, [paymentRequest]);
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8">
@@ -603,32 +640,30 @@ export default function PostListingPage() {
                 <p className="text-sm text-slate-500 mt-2">Phí niêm yết: <strong className="text-primary text-lg">50,000đ</strong>/tin. Thanh toán theo cú pháp qua Quét mã bên dưới.</p>
               </div>
 
-              <div className="flex bg-muted/50 p-1.5 rounded-lg">
-                <button onClick={() => setPaymentMethod('qr')} className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-colors ${paymentMethod === 'qr' ? 'bg-white shadow' : 'text-slate-500 hover:text-slate-700'}`}>VietQR</button>
-                <button onClick={() => setPaymentMethod('momo')} className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-colors ${paymentMethod === 'momo' ? 'bg-pink-100 text-pink-700 shadow' : 'text-slate-500 hover:text-slate-700'}`}>Ví MoMo</button>
-                <button onClick={() => setPaymentMethod('bank')} className={`flex-1 py-1.5 rounded-md text-sm font-semibold transition-colors ${paymentMethod === 'bank' ? 'bg-blue-100 text-blue-700 shadow' : 'text-slate-500 hover:text-slate-700'}`}>Bank</button>
-              </div>
-
-              <div className="p-4 border rounded-xl flex flex-col items-center justify-center bg-slate-50 gap-4">
-                {paymentMethod === 'qr' && <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=vietqr_demo" alt="VietQR" className="w-40 h-40 object-contain rounded-md" />}
-                {paymentMethod === 'momo' && <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=momo_demo" alt="Momo" className="w-40 h-40 object-contain rounded-md border-4 border-pink-500" />}
-                {paymentMethod === 'bank' && (
-                  <div className="w-full text-left space-y-3 bg-white p-4 rounded-lg shadow-sm">
-                    <div className="flex justify-between border-b pb-2"><span className="text-sm">Ngân hàng:</span> <span className="font-bold text-blue-800">Vietcombank</span></div>
-                    <div className="flex justify-between border-b pb-2"><span className="text-sm">Tên TK:</span> <span className="font-bold">AN CU PLUS VN</span></div>
-                    <div className="flex justify-between"><span className="text-sm">Số TK:</span> <span className="font-bold text-lg font-mono">1900 8888 6666</span></div>
+              {paymentRequest ? (
+                <div className="p-4 border rounded-xl flex flex-col items-center justify-center bg-slate-50 gap-4">
+                  <img src={paymentRequest.qrImageUrl} alt="VietQR" className="w-56 h-56 object-contain rounded-md bg-white border" />
+                  <div className="w-full text-left space-y-2 bg-white p-4 rounded-lg border">
+                    <div className="flex justify-between gap-3 border-b pb-2"><span className="text-sm text-slate-500">Ngân hàng</span> <span className="font-bold text-blue-800">{paymentRequest.bankId}</span></div>
+                    <div className="flex justify-between gap-3 border-b pb-2"><span className="text-sm text-slate-500">Tài khoản</span> <span className="font-bold">{paymentRequest.bankAccountName}</span></div>
+                    <div className="flex justify-between gap-3 border-b pb-2"><span className="text-sm text-slate-500">Số TK</span> <span className="font-bold font-mono">{paymentRequest.bankAccountNumber}</span></div>
+                    <div className="flex justify-between gap-3 border-b pb-2"><span className="text-sm text-slate-500">Số tiền</span> <span className="font-bold text-emerald-700">{new Intl.NumberFormat('vi-VN').format(paymentRequest.finalPrice)}đ</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-sm text-slate-500">Nội dung</span> <span className="font-bold font-mono text-slate-900 bg-yellow-100 px-1 rounded">{paymentRequest.orderCode}</span></div>
                   </div>
-                )}
-                
-                <p className="text-xs text-muted-foreground text-center">Nội dung chuyển: <strong className="text-slate-900 bg-yellow-100 px-1 rounded">BUY_POST_{Math.floor(Math.random() * 10000)}</strong></p>
-              </div>
+                  <p className="text-xs text-muted-foreground text-center">Sau khi ngân hàng báo tiền vào, tin đăng sẽ tự gửi lại.</p>
+                </div>
+              ) : (
+                <div className="p-4 border rounded-xl bg-slate-50 text-sm text-slate-600">
+                  Tạo mã VietQR riêng cho phí đăng tin. QR có sẵn tài khoản, số tiền và nội dung chuyển khoản.
+                </div>
+              )}
 
               <button 
-                  disabled={checkoutLoading}
-                  onClick={handlePaymentSuccess}
+                  disabled={checkoutLoading || !!paymentRequest}
+                  onClick={handleCreatePayment}
                   className="w-full bg-primary text-primary-foreground font-bold py-3.5 rounded-lg hover:bg-primary/90 flex justify-center items-center shadow-md shadow-primary/20 transition-all disabled:opacity-50"
               >
-                  {checkoutLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Tôi Đã Chuyển Tiền Thành Công"}
+                  {checkoutLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (paymentRequest ? "Đang chờ ngân hàng xác nhận..." : "Tạo mã QR thanh toán")}
               </button>
             </div>
           </div>

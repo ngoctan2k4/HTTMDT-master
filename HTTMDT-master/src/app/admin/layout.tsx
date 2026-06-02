@@ -6,6 +6,7 @@ import { UnreadMessageBadge } from "@/components/messages/UnreadMessageBadge";
 import { AdminTaskBadge } from "@/components/admin/AdminTaskBadge";
 
 const navItems = [
+    { href: "/admin/payments", label: "Thanh toan V-Coin", icon: Banknote, taskScope: null },
     { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, taskScope: null },
     { href: "/admin/users", label: "Quản lý User", icon: Users, taskScope: null },
     { href: "/admin/properties", label: "Quản lý BĐS", icon: Building2, taskScope: "properties" },
