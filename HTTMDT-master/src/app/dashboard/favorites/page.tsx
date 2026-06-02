@@ -5,8 +5,7 @@ import dbConnect from "@/lib/db";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { Favorite } from "@/models/Favorite";
 import { Property } from "@/models/Property";
-import { PropertyCard } from "@/components/property/PropertyCard";
-import { RemoveFavoriteButton } from "@/components/property/RemoveFavoriteButton";
+import { FavoritePropertyList } from "@/components/property/FavoritePropertyList";
 
 export const revalidate = 0;
 
@@ -22,6 +21,7 @@ type SavedProperty = {
   area?: number;
   isFeatured?: boolean;
   type?: string;
+  propertyType?: string;
   depositStatus?: string;
   author?: {
     name?: string;
@@ -106,7 +106,7 @@ export default async function FavoritePropertiesPage() {
           <Heart className="mx-auto mb-4 h-12 w-12 text-muted-foreground opacity-30" />
           <div className="mb-2 text-lg font-semibold">Bạn chưa lưu tin nào</div>
           <div className="mb-6 text-sm text-muted-foreground">
-            Khi gặp tin phù hợp, hãy bấm “Lưu tin” để quay lại nhanh ở đây.
+            Khi gặp tin phù hợp, hãy bấm lưu tin để quay lại nhanh ở đây.
           </div>
           <Link
             href="/search"
@@ -119,27 +119,7 @@ export default async function FavoritePropertiesPage() {
       ) : null}
 
       {!dbError && properties.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {properties.map((property) => (
-            <div key={property.id} className="flex h-full flex-col gap-2">
-              <PropertyCard
-                id={property.id}
-                title={property.title}
-                price={property.price}
-                address={`${property.address}${property.city ? `, ${property.city}` : ""}`}
-                imageUrl={property.images?.[0] || ""}
-                beds={property.beds || 0}
-                baths={property.baths || 0}
-                area={property.area || 0}
-                isFeatured={property.isFeatured}
-                type={property.type}
-                depositStatus={property.depositStatus}
-                author={property.author}
-              />
-              <RemoveFavoriteButton propertyId={property.id} />
-            </div>
-          ))}
-        </div>
+        <FavoritePropertyList properties={properties} />
       ) : null}
     </div>
   );
