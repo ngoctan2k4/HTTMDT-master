@@ -76,6 +76,7 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
                             email: user.email,
                             image: user.image,
                             role: "user", // Default role
+                            emailVerified: new Date(),
                             // Không có password vì dùng Google
                         });
                         await newUser.save();

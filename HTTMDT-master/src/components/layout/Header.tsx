@@ -157,6 +157,10 @@ export function Header() {
                                             <Wallet className="h-4 w-4" />
                                             Ví tiền
                                         </Link>
+                                        <Link href="/dashboard/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
+                                            <UserCircle className="h-4 w-4" />
+                                            Thông tin tài khoản
+                                        </Link>
                                         <Link href="/dashboard/messages" className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setIsDropdownOpen(false)}>
                                             <MessageSquare className="h-4 w-4" />
                                             Hộp thư
