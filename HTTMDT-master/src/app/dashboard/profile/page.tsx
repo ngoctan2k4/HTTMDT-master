@@ -26,7 +26,6 @@ export default function ProfilePage() {
   const [createdAt, setCreatedAt] = useState("");
   const [emailVerified, setEmailVerified] = useState("");
   const [userType, setUserType] = useState("Khách hàng");
-  const [isVerified, setIsVerified] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
@@ -54,7 +53,6 @@ export default function ProfilePage() {
           setCreatedAt(data.createdAt || "");
           setEmailVerified(data.emailVerified || "");
           setUserType(data.userType || "Khách hàng");
-          setIsVerified(Boolean(data.isVerified));
         }
       } catch (err) {
         console.error(err);
@@ -303,10 +301,6 @@ export default function ProfilePage() {
                 );
               })}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Trạng thái KYC/CCCD:{" "}
-              {isVerified ? <span className="font-medium text-green-600">Đã xác thực</span> : <span className="font-medium text-amber-600">Chưa xác thực</span>}
-            </p>
           </section>
 
           <div className="flex justify-end border-t pt-4">
