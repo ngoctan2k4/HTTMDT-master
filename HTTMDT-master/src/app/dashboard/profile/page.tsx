@@ -5,11 +5,11 @@ import {
   BadgeCheck,
   Briefcase,
   CalendarDays,
-  CreditCard,
   Loader2,
   Mail,
   Phone,
   Save,
+  Send,
   ShieldCheck,
   UserCircle,
 } from "lucide-react";
@@ -27,12 +27,14 @@ export default function ProfilePage() {
   const [emailVerified, setEmailVerified] = useState("");
   const [userType, setUserType] = useState("Khách hàng");
   const [isVerified, setIsVerified] = useState(false);
-  const [bankName, setBankName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
+  const [emailOtp, setEmailOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [emailMessage, setEmailMessage] = useState({ text: "", type: "" });
 
   useEffect(() => {
     async function loadProfile() {
@@ -53,9 +55,6 @@ export default function ProfilePage() {
           setEmailVerified(data.emailVerified || "");
           setUserType(data.userType || "Khách hàng");
           setIsVerified(Boolean(data.isVerified));
-          setBankName(data.bankInfo?.bankName || "");
-          setAccountNumber(data.bankInfo?.accountNumber || "");
-          setAccountName(data.bankInfo?.accountName || "");
         }
       } catch (err) {
         console.error(err);
@@ -75,7 +74,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, userType, bankName, accountNumber, accountName }),
+        body: JSON.stringify({ name, phone, userType }),
       });
       const data = await res.json();
 
@@ -92,18 +91,64 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSendEmailOtp = async () => {
+    setSendingOtp(true);
+    setEmailMessage({ text: "", type: "" });
+
+    try {
+      const res = await fetch("/api/user/email/send-otp", { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok) {
+        setOtpSent(true);
+        setEmailMessage({ text: data.message || "Mã OTP đã được gửi đến email của bạn.", type: "success" });
+      } else {
+        setEmailMessage({ text: data.message || "Không thể gửi mã OTP.", type: "error" });
+      }
+    } catch {
+      setEmailMessage({ text: "Không thể kết nối tới server.", type: "error" });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    setVerifyingEmail(true);
+    setEmailMessage({ text: "", type: "" });
+
+    try {
+      const res = await fetch("/api/user/email/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp: emailOtp }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setEmailVerified(data.emailVerified || new Date().toISOString());
+        setOtpSent(false);
+        setEmailOtp("");
+        setEmailMessage({ text: data.message || "Xác thực email thành công.", type: "success" });
+      } else {
+        setEmailMessage({ text: data.message || "Xác thực email thất bại.", type: "error" });
+      }
+    } catch {
+      setEmailMessage({ text: "Không thể kết nối tới server.", type: "error" });
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex p-8 justify-center">
+      <div className="flex justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   const joinedDate = createdAt ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(createdAt)) : "Chưa có";
-  const verifiedDate = emailVerified
-    ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(emailVerified))
-    : "";
+  const verifiedDate = emailVerified ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(emailVerified)) : "";
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -190,6 +235,49 @@ export default function ProfilePage() {
             </div>
           </section>
 
+          {!emailVerified ? (
+            <section className="space-y-4 border-t pt-6">
+              <h3 className="text-base font-semibold">Xác thực email</h3>
+              {emailMessage.text ? (
+                <div className={`rounded-lg p-3 text-sm font-medium ${emailMessage.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {emailMessage.text}
+                </div>
+              ) : null}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {otpSent ? (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={emailOtp}
+                    onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Nhập mã OTP"
+                    className="h-11 min-w-0 flex-1 rounded-md border px-4 text-center text-sm font-semibold tracking-[0.35em] outline-none transition-colors focus:border-primary"
+                  />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={otpSent ? handleVerifyEmail : handleSendEmailOtp}
+                  disabled={sendingOtp || verifyingEmail || (otpSent && emailOtp.length !== 6)}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {sendingOtp || verifyingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {otpSent ? "Xác thực email" : "Gửi OTP xác thực"}
+                </button>
+                {otpSent ? (
+                  <button
+                    type="button"
+                    onClick={handleSendEmailOtp}
+                    disabled={sendingOtp || verifyingEmail}
+                    className="h-11 rounded-md border px-4 text-sm font-semibold transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    Gửi lại
+                  </button>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
           <section className="space-y-4 border-t pt-6">
             <h3 className="text-base font-semibold">Bạn đang tham gia An Cư Plus với tư cách gì?</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -219,44 +307,6 @@ export default function ProfilePage() {
               Trạng thái KYC/CCCD:{" "}
               {isVerified ? <span className="font-medium text-green-600">Đã xác thực</span> : <span className="font-medium text-amber-600">Chưa xác thực</span>}
             </p>
-          </section>
-
-          <section className="space-y-4 border-t pt-6">
-            <h3 className="flex items-center gap-2 text-base font-semibold">
-              <CreditCard className="h-5 w-5 text-primary" /> Thông tin thanh toán / nhận cọc
-            </h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Tên ngân hàng</label>
-                <input
-                  type="text"
-                  placeholder="VD: Vietcombank, Techcombank..."
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Số tài khoản</label>
-                <input
-                  type="text"
-                  placeholder="Nhập số tài khoản"
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-medium">Tên chủ tài khoản</label>
-                <input
-                  type="text"
-                  placeholder="NGUYEN VAN A"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value.toUpperCase())}
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-            </div>
           </section>
 
           <div className="flex justify-end border-t pt-4">

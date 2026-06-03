@@ -128,7 +128,7 @@ export function DashboardPropertyList({ properties }: { properties: ManagedPrope
     setSelected(new Set());
 
     if (failed > 0) {
-      alert(`Đã xóa một phần. Có ${failed} tin không xóa được, có thể do đang có giao dịch đặt cọc hoặc lỗi quyền.`);
+      alert(`Đã xóa một phần. Có ${failed} tin không xóa được, có thể do lỗi quyền hoặc lỗi hệ thống.`);
     }
 
     router.refresh();

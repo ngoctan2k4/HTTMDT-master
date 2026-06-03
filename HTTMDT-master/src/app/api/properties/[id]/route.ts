@@ -14,14 +14,6 @@ function toObjectId(id: string) {
   return new mongoose.Types.ObjectId(id);
 }
 
-function computeDepositVnd(property: any) {
-  const type = String(property?.type || "");
-  const priceValue = Number(property?.priceValue || 0);
-  if (type === "Cho thuê") return Math.max(1_000_000, Math.round(priceValue * 1_000_000));
-  const v = Math.round(priceValue * 1_000_000 * 0.01);
-  return Math.max(50_000_000, v || 50_000_000);
-}
-
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const oid = toObjectId(id);
@@ -35,13 +27,11 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     return NextResponse.json({ error: "Không tìm thấy tin" }, { status: 404 });
   }
 
-  const depositVnd = computeDepositVnd(row);
   return NextResponse.json({
     property: {
       ...row,
       id: (row as any)._id.toString(),
       _id: undefined,
-      depositVnd,
     },
   });
 }
@@ -70,14 +60,6 @@ export async function DELETE(_: Request, ctx: { params: Promise<{ id: string }> 
     const isAdmin = session.user.role === "admin";
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "Bạn không có quyền xóa tin này." }, { status: 403 });
-    }
-
-    const depositStatus = String(property.depositStatus || "none");
-    if (!isAdmin && ["pending_confirmation", "deposited"].includes(depositStatus)) {
-      return NextResponse.json(
-        { error: "Tin này đang có giao dịch đặt cọc, không thể xóa lúc này." },
-        { status: 400 }
-      );
     }
 
     await Promise.all([

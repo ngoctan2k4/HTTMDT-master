@@ -12,7 +12,6 @@ import ReportButton from "@/components/property/ReportButton";
 import { ContactSellerModal } from "@/components/property/ContactSellerModal";
 import { PropertyMap } from "@/components/property/PropertyMap";
 import { BookAppointmentModal } from "@/components/property/BookAppointmentModal";
-import { User } from "@/models/User";
 
 export const revalidate = 60;
 
@@ -73,18 +72,6 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
         ]
     } as any;
 
-    let bankInfo = null;
-    try {
-        const seller = await User.findById(property.ownerId).lean() as any;
-        bankInfo = seller?.bankInfo || null;
-    } catch (e) {
-        console.error(e);
-    }
-    const isOwner = sessionUserId === property.ownerId;
-    const isBuyer = false; // Deposit removed
-    const isDeposited = false; // Deposit removed
-    const canContact = true;
-
     return (
         <div className="container mx-auto px-4 py-8">
             {/* Breadcrumb */}
@@ -125,7 +112,6 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                         ) : (
                             <div className="w-full h-full flex items-center justify-center">No Image</div>
                         )}
-                        {/* Deposit overlay removed */}
                         <Badge className="absolute top-4 left-4 z-10 bg-black/50 hover:bg-black/60 backdrop-blur">
                             {property.images.length} Ảnh
                         </Badge>
@@ -231,24 +217,16 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                         </div>
 
                         <div className="pt-4 border-t space-y-4">
-                            {!canContact ? (
-                                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-center font-medium">
-                                    Bất động sản này đã được đặt cọc. Bạn không thể liên hệ người bán nữa.
-                                </div>
-                            ) : (
-                                <>
-                                    <button className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-bold text-lg transition-colors shadow-sm">
-                                        <Phone className="h-5 w-5" />
-                                        {property.author.phone}
-                                    </button>
-                                    <ContactSellerModal
-                                        propertyId={property.id}
-                                        authorId={property.ownerId || property.author.id}
-                                        authorName={property.author.name}
-                                        propertyTitle={property.title}
-                                    />
-                                </>
-                            )}
+                            <button className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-bold text-lg transition-colors shadow-sm">
+                                <Phone className="h-5 w-5" />
+                                {property.author.phone}
+                            </button>
+                            <ContactSellerModal
+                                propertyId={property.id}
+                                authorId={property.ownerId || property.author.id}
+                                authorName={property.author.name}
+                                propertyTitle={property.title}
+                            />
                             
                             <BookAppointmentModal 
                                 propertyId={property.id} 
@@ -269,7 +247,7 @@ export default async function PropertyDetailPage({ params }: { params: Promise<{
                             <ShieldAlert className="w-4 h-4 text-orange-500" /> Miễn trừ trách nhiệm
                         </p>
                         <p className="text-xs text-justify">
-                            Tất cả tin đăng trên <strong>An Cư Plus</strong> là do người dùng tự đăng tải qua mô hình C2C. Chúng tôi KHÔNG tham gia vào quá trình giao dịch. Vui lòng cẩn trọng và tự tìm hiểu kỹ tính pháp lý trước khi tiến hành chuyển tiền cọc hoặc ký hợp đồng mua bán.
+                            Tất cả tin đăng trên <strong>An Cư Plus</strong> là do người dùng tự đăng tải qua mô hình C2C. Chúng tôi KHÔNG tham gia vào quá trình giao dịch. Vui lòng cẩn trọng và tự tìm hiểu kỹ tính pháp lý trước khi chuyển tiền hoặc ký hợp đồng mua bán.
                         </p>
                     </div>
 

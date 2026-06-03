@@ -11,7 +11,7 @@ const emailOtpSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ["register"],
+      enum: ["register", "verify-email"],
       required: true,
       index: true,
     },

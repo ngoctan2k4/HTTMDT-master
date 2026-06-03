@@ -19,11 +19,6 @@ type UserProfileDocument = {
   emailVerified?: Date | null;
   userType?: string;
   isVerified?: boolean;
-  bankInfo?: {
-    bankName?: string;
-    accountNumber?: string;
-    accountName?: string;
-  };
 };
 
 export async function GET() {
@@ -45,7 +40,6 @@ export async function GET() {
       emailVerified: user.emailVerified || null,
       userType: user.userType || "Khách hàng",
       isVerified: user.isVerified || false,
-      bankInfo: user.bankInfo || { bankName: "", accountNumber: "", accountName: "" },
     });
   } catch {
     return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
@@ -58,7 +52,7 @@ export async function PATCH(req: Request) {
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { name, phone, userType, bankName, accountNumber, accountName } = body;
+    const { name, phone, userType } = body;
 
     if (typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "Vui lòng nhập họ và tên." }, { status: 400 });
@@ -83,30 +77,11 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Số điện thoại này đã được sử dụng cho tài khoản khác." }, { status: 400 });
     }
 
-    const updateData: {
-      name: string;
-      phone: string;
-      userType: string;
-      bankInfo?: {
-        bankName: string;
-        accountNumber: string;
-        accountName: string;
-      };
-    } = {
+    await User.findByIdAndUpdate(session.user.id, {
       name: name.trim(),
       phone: phone.trim(),
       userType,
-    };
-
-    if (bankName !== undefined || accountNumber !== undefined || accountName !== undefined) {
-      updateData.bankInfo = {
-        bankName: String(bankName || "").trim(),
-        accountNumber: String(accountNumber || "").trim(),
-        accountName: String(accountName || "").trim(),
-      };
-    }
-
-    await User.findByIdAndUpdate(session.user.id, updateData);
+    });
 
     return NextResponse.json({ success: true });
   } catch {

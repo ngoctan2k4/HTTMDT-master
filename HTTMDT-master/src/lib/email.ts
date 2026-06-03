@@ -63,3 +63,18 @@ export function buildRegisterOtpEmail(otp: string) {
     `,
   };
 }
+
+export function buildVerifyEmailOtpEmail(otp: string) {
+  return {
+    subject: "Mã OTP xác thực email An Cư Plus",
+    text: `Mã OTP xác thực email An Cư Plus của bạn là ${otp}. Mã có hiệu lực trong 10 phút.`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h2 style="margin:0 0 12px">Xác thực email An Cư Plus</h2>
+        <p>Mã OTP của bạn là:</p>
+        <div style="font-size:28px;font-weight:700;letter-spacing:6px;margin:16px 0;color:#f97316">${otp}</div>
+        <p>Mã có hiệu lực trong 10 phút. Nếu bạn không yêu cầu xác thực email, vui lòng bỏ qua email này.</p>
+      </div>
+    `,
+  };
+}
