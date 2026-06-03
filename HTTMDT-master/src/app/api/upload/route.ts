@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import crypto from "node:crypto";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { getUploadsBucket } from "@/lib/uploads";
 
 export const runtime = "nodejs";
 
@@ -18,7 +17,7 @@ function safeExtFromType(type: string) {
   return "";
 }
 
-async function saveFileToPublicUploads(file: File, kind: "image" | "video") {
+async function saveFileToGridFS(file: File, kind: "image" | "video", ownerId: string) {
   const ext = safeExtFromType(file.type);
   if (!ext) {
     throw new Error(`Unsupported ${kind} type: ${file.type || "unknown"}`);
@@ -30,14 +29,25 @@ async function saveFileToPublicUploads(file: File, kind: "image" | "video") {
     throw new Error(`${kind} too large`);
   }
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
-
   const filename = `${crypto.randomUUID?.() ?? crypto.randomBytes(16).toString("hex")}.${ext}`;
-  const abs = path.join(uploadsDir, filename);
-  await writeFile(abs, buf);
+  const bucket = await getUploadsBucket();
+  const uploadStream = bucket.openUploadStream(filename, {
+    contentType: file.type,
+    metadata: {
+      kind,
+      ownerId,
+      originalName: file.name,
+      uploadedAt: new Date(),
+    },
+  });
 
-  return `/uploads/${filename}`;
+  await new Promise<void>((resolve, reject) => {
+    uploadStream.on("error", reject);
+    uploadStream.on("finish", () => resolve());
+    uploadStream.end(buf);
+  });
+
+  return `/api/uploads/${uploadStream.id.toString()}`;
 }
 
 function getErrorMessage(e: unknown) {
@@ -67,12 +77,12 @@ export async function POST(req: Request) {
 
     const imageUrls: string[] = [];
     for (const img of images) {
-      imageUrls.push(await saveFileToPublicUploads(img, "image"));
+      imageUrls.push(await saveFileToGridFS(img, "image", session.user.id));
     }
 
     let videoUrl: string | null = null;
     if (video && video instanceof File && video.size > 0) {
-      videoUrl = await saveFileToPublicUploads(video, "video");
+      videoUrl = await saveFileToGridFS(video, "video", session.user.id);
     }
 
     return NextResponse.json({ imageUrls, videoUrl });
@@ -83,4 +93,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
